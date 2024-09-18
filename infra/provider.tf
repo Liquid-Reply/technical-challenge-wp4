@@ -5,13 +5,16 @@ terraform {
       version = "~>4.0"
     }
   }
-  backend "azurem" {
-    resource_group_name  = "tfstate"
-    storage_account_name = "storageaccounttfstate235"
-    container_name       = "tfstate"
+  backend "azurerm" {
+    container_name = "tfstate"
+    key            = "terraform.tfstate"
   }
 }
 
 provider "azurerm" {
+
+  tenant_id       = var.tenant_id
+  subscription_id = var.subscription_id
+
   features {}
 }

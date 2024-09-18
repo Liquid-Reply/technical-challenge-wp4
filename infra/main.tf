@@ -1,19 +1,30 @@
-resource "azurerm_resource_group" "rg" {
-  name     = "tech-challenge-wp4"
-  location = local.location
+data "azurerm_virtual_machine" "machines" {
+  for_each = module.compute.vm_names
+  name                = "${each.key}"
+  resource_group_name = var.resource_group_name
+  depends_on = [ module.compute ]
 }
 
-resource "azurerm_storage_account" "storage_account" {
-  name                     = "storageaccounttfstate235"
-  resource_group_name      = local.resource_group_name
-  location                 = local.location
-  account_tier             = "Standard"
-  account_replication_type = "LRS"
+data "azurerm_user_assigned_identity" "identity" {
+    name = "${var.name_prefix}-identity"
+    resource_group_name = var.resource_group_name
+    depends_on = [ module.compute ]
 }
 
+module "compute" {
+  source = "./modules/compute"
 
-resource "azurerm_storage_container" "container" {
-  name                  = "tfstate"
-  storage_account_name  = azurerm_storage_account.storage_account.name
-  container_access_type = "private"
+  resource_group_name = var.resource_group_name
+  name_prefix = var.name_prefix
+}
+
+module "monitoring" {
+  source = "./modules/monitoring"
+
+  resource_group_name = var.resource_group_name
+  grafana_version = "10"
+  vm_ids = module.compute.vm_ids
+  identity_id = data.azurerm_user_assigned_identity.identity.id
+
+  name_prefix = var.name_prefix
 }
