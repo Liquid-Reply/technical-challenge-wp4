@@ -1,0 +1,188 @@
+---
+- name: Install OpenTelemetry Collector
+  hosts: all
+  become: true
+  tags:
+    - play1
+
+  tasks:
+    - name: Install dependencies
+      apt:
+        name:
+          - git
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+          - python3-pip
+          - virtualenv
+          - python3-setuptools
+        state: present
+        update_cache: true
+
+    - name: Add Docker GPG apt Key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker Repository
+      apt_repository:
+        repo: deb https://download.docker.com/linux/ubuntu focal stable
+        state: present
+
+    - name: Update apt and install docker-ce
+      apt:
+        name: docker-ce
+        state: latest
+        update_cache: true
+
+    - name: Install Docker Module for Python
+      pip:
+        name: docker   
+ 
+
+    - name: Download opentelemetry collector .deb package
+      get_url:
+        url: https://github.com/open-telemetry/opentelemetry-collector-releases/releases/download/v0.109.0/otelcol_0.109.0_linux_amd64.deb
+        dest: /tmp/otelcol_0.109.0_linux_amd64.deb
+
+    - name: Install opentelemetry collectorr
+      ansible.builtin.command: dpkg -i otelcol_0.109.0_linux_amd64.deb
+      become: true
+      args:
+        chdir: /tmp
+
+    - name: Create a data container
+      docker_container:
+        name: aad-auth-proxy
+        image: mcr.microsoft.com/azuremonitor/auth-proxy/prod/aad-auth-proxy/images/aad-auth-proxy:0.1.0-main-04-10-2024-7067ac84
+        state: started
+        ports:
+          - "8081:8081"
+
+        env:
+          AUDIENCE: "https://monitor.azure.com/.default"
+          TARGET_HOST: "https://cariad-wp4-azure-monitor-3sno.westeurope-1.metrics.ingest.monitor.azure.com" 
+          LISTENING_PORT: "8081"
+          IDENTITY_TYPE: "userAssigned" 
+          AAD_CLIENT_ID: "3ec6e3de-da2e-4ddc-a091-68015e002700"
+          AAD_TOKEN_REFRESH_INTERVAL_IN_PERCENTAGE: "10"
+          OTEL_SERVICE_NAME: "azuremonitor_ingestion"
+          
+
+          
+- name: Setup Blackbox Exporter
+  hosts: all
+  become: true
+  tags:
+    - play2
+
+  tasks:
+    - name: Install Blackbox Exporter
+      apt:
+        name:
+          - prometheus-blackbox-exporter
+        state: present
+
+    - name: Demo play to copy file
+      copy:
+        src: ./config.yaml
+        dest: /etc/otelcol/config.yaml
+
+
+- name: Run the Counter Application
+  hosts: all
+  become: true
+  tags:
+    - play3
+
+  tasks:
+    - name: Install git
+      apt:
+        name:
+          - git
+        state: present
+        update_cache: yes
+
+    - name: Install the gpg key for nodejs LTS
+      apt_key:
+        url: "https://deb.nodesource.com/gpgkey/nodesource.gpg.key"
+        state: present
+    
+    - name: Install the nodejs LTS repos
+      apt_repository:
+        repo: "deb https://deb.nodesource.com/node_20.x {{ ansible_distribution_release }} main"
+        state: present
+        update_cache: yes
+
+    - name: Install the nodejs
+      apt:
+        name: nodejs
+        state: present
+
+    - name: Add yarn GPG key
+      apt_key:
+        url: https://dl.yarnpkg.com/debian/pubkey.gpg
+        state: present
+
+    - name: Add yarn repo
+      apt_repository:
+        repo: deb https://dl.yarnpkg.com/debian/ stable main
+        state: present
+    
+    - name: install yarn
+      apt:
+        name: yarn
+        state: present
+
+    - name: Clone the repo
+      ansible.builtin.git:
+        repo: https://github.com/curioustushar/react-sample-projects.git
+        dest: "/home/ubuntu/react-sample-projects"
+        version: master
+    
+    - name: Install "react-scripts" node.js package globally.
+      community.general.yarn:
+        name: react-scripts
+        global: true
+
+    - name: Install dependencies
+      yarn:
+        path: "/home/ubuntu/react-sample-projects/counter"
+
+  
+- name: Run the Counter Application
+  hosts: all
+  become: true
+  tags:
+    - play4
+
+  tasks:
+    - name: Ensure cert dir exists
+      file:
+        path: /home/ubuntu/react-sample-projects/counter/certs
+        state: directory
+
+    - name: Create private key (RSA, 4096 bits)
+      community.crypto.openssl_privatekey:
+        path: /home/ubuntu/react-sample-projects/counter/certs/certificate.key
+
+    
+    - name: Create simple self-signed certificate
+      community.crypto.x509_certificate:
+        path: /home/ubuntu/react-sample-projects/counter/certs/certificate.pem       
+        privatekey_path: /home/ubuntu/react-sample-projects/counter/certs/certificate.key
+        provider: selfsigned
+
+        
+    - name: Update package.json 
+      lineinfile:
+        path: /home/ubuntu/react-sample-projects/counter/package.json
+        regexp: '"start":'
+        line: '    "start": "export HTTPS=true&&SSL_CRT_FILE=../certs/certificate.pem&&SSL_KEY_FILE=../certs/certificate.key react-scripts start",'
+        create: yes    
+
+    - name: Start the Application
+      shell: "nohup yarn start &"
+      args:
+        chdir: "/home/ubuntu/react-sample-projects/counter"
