@@ -2,7 +2,7 @@ data "azurerm_resource_group" "resource_group" {
   name     = var.resource_group_name
 }
 
-resource "azurerm_virtual_network" "cariad-wp4" {
+resource "azurerm_virtual_network" "wp4" {
   name = "${var.name_prefix}-network"
   address_space       = ["10.0.0.0/16"]
   location            = data.azurerm_resource_group.resource_group.location
@@ -17,14 +17,14 @@ resource "azurerm_public_ip" "public_ip" {
   allocation_method   = "Static"
 }
 
-resource "azurerm_subnet" "cariad-wp4" {
+resource "azurerm_subnet" "wp4" {
   name                 = "internal"
   resource_group_name  = data.azurerm_resource_group.resource_group.name
-  virtual_network_name = azurerm_virtual_network.cariad-wp4.name
+  virtual_network_name = azurerm_virtual_network.wp4.name
   address_prefixes     = ["10.0.2.0/24"]
 }
 
-resource "azurerm_network_interface" "cariad-wp4" {
+resource "azurerm_network_interface" "wp4" {
   count = 6
   name = "${var.name_prefix}-nic-${count.index}"
   location            = data.azurerm_resource_group.resource_group.location
@@ -32,7 +32,7 @@ resource "azurerm_network_interface" "cariad-wp4" {
 
   ip_configuration {
     name                          = "internal"
-    subnet_id                     = azurerm_subnet.cariad-wp4.id
+    subnet_id                     = azurerm_subnet.wp4.id
     private_ip_address_allocation = "Dynamic"
     public_ip_address_id = azurerm_public_ip.public_ip[count.index].id
   }
@@ -57,7 +57,7 @@ resource "azurerm_network_security_group" "security_group" {
 }
 
 resource "azurerm_subnet_network_security_group_association" "sg_association" {
-  subnet_id                 = azurerm_subnet.cariad-wp4.id
+  subnet_id                 = azurerm_subnet.wp4.id
   network_security_group_id = azurerm_network_security_group.security_group.id
 }
 
@@ -68,7 +68,7 @@ resource "azurerm_user_assigned_identity" "vm" {
   name = "${var.name_prefix}-identity"
 }
 
-resource "azurerm_linux_virtual_machine" "cariad-wp4" {
+resource "azurerm_linux_virtual_machine" "wp4" {
   count = 6
   name = "${var.name_prefix}-machine-${count.index}"
   resource_group_name = data.azurerm_resource_group.resource_group.name
@@ -76,7 +76,7 @@ resource "azurerm_linux_virtual_machine" "cariad-wp4" {
   size                = "Standard_A1_v2"
   admin_username      = "ubuntu"
   network_interface_ids = [
-    azurerm_network_interface.cariad-wp4[count.index].id,
+    azurerm_network_interface.wp4[count.index].id,
   ]
 
   identity {
@@ -86,7 +86,7 @@ resource "azurerm_linux_virtual_machine" "cariad-wp4" {
 
   admin_ssh_key {
     username   = "ubuntu"
-    public_key = file("/Users/maxschmidt/.ssh/cariad_tech_challenge_wp4.pub")
+    public_key = file("${var.ssh_public_key_file}")
   }
 
   os_disk {
@@ -105,7 +105,7 @@ resource "azurerm_linux_virtual_machine" "cariad-wp4" {
 # Add logging and monitoring extensions. This extension is needed for other extensions
 resource "azurerm_virtual_machine_extension" "azure-monitor-agent" {
   for_each = {
-    for vm in azurerm_linux_virtual_machine.cariad-wp4 : vm.name => vm.id
+    for vm in azurerm_linux_virtual_machine.wp4 : vm.name => vm.id
     }
   name = "${var.name_prefix}-monitor-agent-${each.key}"
   virtual_machine_id    = each.value

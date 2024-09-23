@@ -1,2 +1,2 @@
-resource_group_name  = "tech-challenge-wp4"
-storage_account_name = "cariadtechchallengewp4"
+resource_group_name  = ""
+storage_account_name = ""

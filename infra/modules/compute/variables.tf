@@ -1,8 +1,14 @@
 variable "resource_group_name" {
-  description = "The name of the resource group where the Event Hub resources will be created."
+  description = "Name of the Resource Group"
   type        = string
 }
 
 variable "name_prefix" {
   type = string
+  description = "Prefix to add to all Resources"
+}
+
+variable "ssh_public_key_file" {
+  type = string
+  description = "SSH Public Key file path"
 }

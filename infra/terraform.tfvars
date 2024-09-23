@@ -1,9 +1,11 @@
-tenant_id = "b00367e2-193a-4f48-94de-7245d45c0947"
-subscription_id = "7b3d4e1a-f9d3-4450-b88e-759cff82af4d"
+tenant_id = ""
+subscription_id = ""
 
-storage_account_name = "cariadtechchallengewp4"
+storage_account_name = ""
 
-resource_group_name = "tech-challenge-wp4"
-resource_group_location = "West Europe"
+resource_group_name = ""
+resource_group_location = ""
 
-name_prefix = "cariad-wp4"
+name_prefix = ""
+
+ssh_public_key_file = ""

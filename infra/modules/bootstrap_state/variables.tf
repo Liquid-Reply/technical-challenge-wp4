@@ -1,11 +1,11 @@
-variable "stage_resource_group" {
+variable "resource_group_name" {
   type        = string
-  description = "Name of the product stage resource group to use"
+  description = "Name of the resource group to create"
 }
 
-variable "stage_resource_group_location" {
+variable "resource_group_location" {
   type        = string
-  description = "Location of the product stage resource group to use"
+  description = "Location of the resource group to create"
 }
 
 variable "storage_account_name" {
@@ -26,4 +26,5 @@ variable "subscription_id" {
 
 variable "tenant_id" {
   type = string
+  description = "Tenant ID"
 }

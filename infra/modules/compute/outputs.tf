@@ -1,12 +1,12 @@
 output "vm_names" {
   description = "The names of the virtual machines"
-  value       = { for vm in azurerm_linux_virtual_machine.cariad-wp4 : vm.name => vm.name }
+  value       = { for vm in azurerm_linux_virtual_machine.wp4 : vm.name => vm.name }
 }
 
 
 output "vm_ids" {
   description = "The IDs of the virtual machines"
-  value       = { for vm in azurerm_linux_virtual_machine.cariad-wp4 : vm.name => vm.id }
+  value       = { for vm in azurerm_linux_virtual_machine.wp4 : vm.name => vm.id }
 }
 
 output "vm_identity_name" {
@@ -14,5 +14,5 @@ output "vm_identity_name" {
 }
 
 output "vm_ips" {
-  value = { for vm in azurerm_linux_virtual_machine.cariad-wp4 : vm.name => vm.public_ip_address }
+  value = { for vm in azurerm_linux_virtual_machine.wp4 : vm.name => vm.public_ip_address }
 }

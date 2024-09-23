@@ -2,6 +2,8 @@ data "azurerm_resource_group" "resource_group" {
   name = var.resource_group_name
 }
 
+data "azurerm_client_config" "client_config" {
+}
 
 resource "azurerm_monitor_workspace" "azure_monitor" {
 
@@ -34,6 +36,12 @@ resource "azurerm_dashboard_grafana" "grafana" {
   }
 }
 
+resource "azurerm_role_assignment" "grafana_admin" {
+  scope                = azurerm_dashboard_grafana.grafana.id
+  role_definition_name = "Grafana Admin"
+  principal_id         = data.azurerm_client_config.client_config.object_id
+}
+
 resource "azurerm_role_assignment" "monitor_access" {
   scope                = azurerm_monitor_workspace.azure_monitor.id
   role_definition_name = "Monitoring Reader"
@@ -44,6 +52,12 @@ resource "azurerm_role_assignment" "log_analytics_access" {
   scope                = azurerm_log_analytics_workspace.log_analytics.id
   role_definition_name = "Log Analytics Reader"
   principal_id         = azurerm_dashboard_grafana.grafana.identity.0.principal_id
+}
+
+resource "azurerm_role_assignment" "metrics_publisher" {
+  scope                = azurerm_monitor_workspace.azure_monitor.default_data_collection_rule_id
+  role_definition_name = "Monitoring Metrics Publisher"
+  principal_id         = var.identity_id
 }
 
 resource "azurerm_monitor_data_collection_rule" "machine_dcr" {
@@ -81,7 +95,7 @@ resource "azurerm_monitor_data_collection_rule" "machine_dcr" {
   }
 }
 
-resource "azurerm_monitor_data_collection_rule_association" "example" {
+resource "azurerm_monitor_data_collection_rule_association" "dcr_assignment" {
   for_each = var.vm_ids
   name = "${var.name_prefix}-machines-dcr-association"
   data_collection_rule_id = azurerm_monitor_data_collection_rule.machine_dcr.id

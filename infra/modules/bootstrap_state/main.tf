@@ -1,6 +1,6 @@
 resource "azurerm_resource_group" "terraform_state" {
-  name     = var.stage_resource_group
-  location = var.stage_resource_group_location
+  name     = var.resource_group_name
+  location = var.resource_group_location
 }
 
 resource "azurerm_storage_account" "terraform_state" {

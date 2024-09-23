@@ -2,8 +2,15 @@
 - name: Install OpenTelemetry Collector
   hosts: all
   become: true
+  vars_files:
+    - ./vars/otel_vars.yml
+  handlers:
+    - name: restart_otelcol
+      service:
+        name: otelcol-contrib
+        state: restarted
   tags:
-    - play1
+    - otelcol
 
   tasks:
     - name: Install dependencies
@@ -43,14 +50,18 @@
 
     - name: Download opentelemetry collector .deb package
       get_url:
-        url: https://github.com/open-telemetry/opentelemetry-collector-releases/releases/download/v0.109.0/otelcol_0.109.0_linux_amd64.deb
-        dest: /tmp/otelcol_0.109.0_linux_amd64.deb
+        url: https://github.com/open-telemetry/opentelemetry-collector-releases/releases/download/v0.109.0/otelcol-contrib_0.109.0_linux_amd64.deb
+        dest: /tmp/otelcol-contrib_0.109.0_linux_amd64.deb
+    
+    - name: Install Opentelemetry Contrib Collector
+      apt:
+        deb: /tmp/otelcol-contrib_0.109.0_linux_amd64.deb
 
-    - name: Install opentelemetry collectorr
-      ansible.builtin.command: dpkg -i otelcol_0.109.0_linux_amd64.deb
-      become: true
-      args:
-        chdir: /tmp
+    - name: Copy Otelcol Config file
+      template:
+        src: ./files/config.yaml.j2
+        dest: /etc/otelcol-contrib/config.yaml
+      notify: restart_otelcol
 
     - name: Create a data container
       docker_container:
@@ -62,20 +73,66 @@
 
         env:
           AUDIENCE: "https://monitor.azure.com/.default"
-          TARGET_HOST: "https://cariad-wp4-azure-monitor-3sno.westeurope-1.metrics.ingest.monitor.azure.com" 
+          TARGET_HOST: "{{ azure_monitor_ingestion_host }}" 
           LISTENING_PORT: "8081"
           IDENTITY_TYPE: "userAssigned" 
-          AAD_CLIENT_ID: "3ec6e3de-da2e-4ddc-a091-68015e002700"
+          AAD_CLIENT_ID: "{{ user_identity_id }}"
           AAD_TOKEN_REFRESH_INTERVAL_IN_PERCENTAGE: "10"
           OTEL_SERVICE_NAME: "azuremonitor_ingestion"
           
+- name: Setup cAdvisor
+  hosts: all
+  become: true
+  tags:
+   - cadvisor
+  tasks:
+    - name: Create cAdvisor Container
+      docker_container:
+        name: cadvisor
+        image: gcr.io/cadvisor/cadvisor:v0.49.1
+        state: started
+        ports:
+          - "8080:8080"
+        privileged: true
+        volumes:
+          - /:/rootfs:ro
+          - /var/run:/var/run:ro
+          - /sys:/sys:ro
+          - /var/lib/docker/:/var/lib/docker:ro
+          - /dev/disk/:/dev/disk:ro
+        devices: 
+          - /dev/kmsg
 
+- name: Setup file sharing service (picoshare)
+  hosts: all
+  become: true
+  tags:
+   - filesharing
+  tasks:
+    - name: Create picoshare Container
+      docker_container:
+        name: picoshare
+        image: mtlynch/picoshare:1.4.4
+        ports:
+          - "4001:4001/tcp"
+        env:
+          PORT: "4001"
+          PS_SHARED_SECRET: "verysecretpassword"
           
 - name: Setup Blackbox Exporter
   hosts: all
   become: true
+  handlers:
+    - name: restart_otelcol
+      service:
+        name: otelcol-contrib
+        state: restarted
+    - name: restart_blackbox_exporter
+      service:
+        name: prometheus-blackbox-exporter
+        state: restarted
   tags:
-    - play2
+    - blackbox_exporter
 
   tasks:
     - name: Install Blackbox Exporter
@@ -84,17 +141,17 @@
           - prometheus-blackbox-exporter
         state: present
 
-    - name: Demo play to copy file
+    - name: Copy Blackbox exporter Config file
       copy:
-        src: ./config.yaml
-        dest: /etc/otelcol/config.yaml
+        src: ./files/blackbox_config.yaml
+        dest: /etc/prometheus/blackbox.yml
+      notify: restart_blackbox_exporter
 
-
-- name: Run the Counter Application
+- name: Setup the Counter Application
   hosts: all
   become: true
   tags:
-    - play3
+    - setup_counter_application
 
   tasks:
     - name: Install git
@@ -140,11 +197,7 @@
         repo: https://github.com/curioustushar/react-sample-projects.git
         dest: "/home/ubuntu/react-sample-projects"
         version: master
-    
-    - name: Install "react-scripts" node.js package globally.
-      community.general.yarn:
-        name: react-scripts
-        global: true
+        force: yes
 
     - name: Install dependencies
       yarn:
@@ -155,7 +208,7 @@
   hosts: all
   become: true
   tags:
-    - play4
+    - run_counter_application
 
   tasks:
     - name: Ensure cert dir exists
@@ -182,7 +235,12 @@
         line: '    "start": "export HTTPS=true&&SSL_CRT_FILE=../certs/certificate.pem&&SSL_KEY_FILE=../certs/certificate.key react-scripts start",'
         create: yes    
 
-    - name: Start the Application
-      shell: "nohup yarn start &"
-      args:
-        chdir: "/home/ubuntu/react-sample-projects/counter"
+    - name: Copy Counter Systemd file
+      copy:
+        src: ./files/counter.service
+        dest: /etc/systemd/system/counter.service
+
+    - name: Start Counter 
+      service:
+        name: counter.service
+        state: started

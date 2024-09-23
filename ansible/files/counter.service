@@ -1,0 +1,6 @@
+Description=Load Counter Application
+[Service]
+ExecStart=/usr/bin/yarn start
+WorkingDirectory= /home/ubuntu/react-sample-projects/counter/
+[Install]
+WantedBy=multi-user.target
