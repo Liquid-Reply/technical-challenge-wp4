@@ -8,11 +8,11 @@
   * [Infrastructure Provisioning using Terraform](#infrastructure-provisioning-using-terraform)
     * [Usage](#usage)
   * [Configuration Management using Ansible](#configuration-management-using-ansible)
-  * [Monitoring](#monitoring)
-    * [Data Sources](#data-sources)
-	    * [Azure Monitor](#azure-monitor)
-	    * [Prometheus](#prometheus-azure-monitor-workspace)
-   * [Alerting](#alerting)
+* [Monitoring](#monitoring)
+  * [Data Sources](#data-sources)
+    * [Azure Monitor](#azure-monitor)
+    * [Prometheus](#prometheus-azure-monitor-workspace)
+* [Alerting](#alerting)
 
 ## Architecture
 
