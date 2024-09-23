@@ -17,7 +17,7 @@
 ## Architecture
 
 ### Diagram
-![Architecture](.wp-4.drawio.png)
+![Architecture](wp-4.drawio.png)
 
 ### Description
 This architecture presents the collection of system & application metrics using Azure services such as Azure log Analytics & Azure Monitor workspaces as well as Azure managed Grafana. Grafana dashboards are used to visualize all the collected metrics.
