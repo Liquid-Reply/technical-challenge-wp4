@@ -145,8 +145,9 @@
             "type": "prometheus",
             "uid": "${PROMETHEUS_DATASOURCE}"
           },
+          "editorMode": "code",
           "exemplar": false,
-          "expr": "count(container_last_seen{instance=~\"$node\",job=~\"$job\",image!=\"\"})",
+          "expr": "count(container_last_seen{instance=~\"$node\",job=~\"$job\",image!=\"\", host_name=~\"$hostname\"})",
           "instant": true,
           "interval": "",
           "intervalFactor": 2,
@@ -225,12 +226,14 @@
             "type": "prometheus",
             "uid": "${PROMETHEUS_DATASOURCE}"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "sum(container_memory_usage_bytes{instance=~\"$node\",job=~\"$job\",image!=\"\"})/1024/1024",
+          "expr": "sum(container_memory_usage_bytes{instance=~\"$node\",job=~\"$job\",image!=\"\", host_name=~\"$hostname\"})/1024/1024",
           "interval": "",
           "intervalFactor": 2,
           "legendFormat": "",
           "metric": "container_memory_usage_bytes",
+          "range": true,
           "refId": "A",
           "step": 240
         }
@@ -304,12 +307,14 @@
             "type": "prometheus",
             "uid": "${PROMETHEUS_DATASOURCE}"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "sum(machine_memory_bytes{instance=~\"$node\",job=~\"$job\"})/1024/1024",
+          "expr": "sum(machine_memory_bytes{instance=~\"$node\",job=~\"$job\", host_name=~\"$hostname\"})/1024/1024",
           "interval": "",
           "intervalFactor": 2,
           "legendFormat": "",
           "metric": "container_memory_usage_bytes",
+          "range": true,
           "refId": "A",
           "step": 240
         }
@@ -383,12 +388,14 @@
             "type": "prometheus",
             "uid": "${PROMETHEUS_DATASOURCE}"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "sum(irate(container_cpu_usage_seconds_total{instance=~\"$node\",job=~\"$job\",image!=\"\"}[$__rate_interval]) * 100) ",
+          "expr": "sum(irate(container_cpu_usage_seconds_total{instance=~\"$node\",job=~\"$job\",image!=\"\", host_name=~\"$hostname\"}[$__rate_interval]) * 100) ",
           "interval": "",
           "intervalFactor": 2,
           "legendFormat": "",
           "metric": "container_memory_usage_bytes",
+          "range": true,
           "refId": "A",
           "step": 240
         }
@@ -462,12 +469,14 @@
             "type": "prometheus",
             "uid": "${PROMETHEUS_DATASOURCE}"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "sum(machine_cpu_cores{instance=~\"$node\",job=~\"$job\"})",
+          "expr": "sum(machine_cpu_cores{instance=~\"$node\",job=~\"$job\", host_name=~\"$hostname\"})",
           "interval": "",
           "intervalFactor": 2,
           "legendFormat": "",
           "metric": "container_memory_usage_bytes",
+          "range": true,
           "refId": "A",
           "step": 240
         }
@@ -565,7 +574,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "sum by (name) (rate(container_cpu_usage_seconds_total{instance=~\"$node\",job=~\"$job\",image!=\"\", service=~\"$service\", name=~\"$container\"}[$__rate_interval]) ) * 100 ",
+          "expr": "sum by (name) (rate(container_cpu_usage_seconds_total{instance=~\"$node\",job=~\"$job\",image!=\"\", service=~\"$service\", name=~\"$container\", host_name=~\"$hostname\"}[$__rate_interval]) ) * 100 ",
           "interval": "",
           "intervalFactor": 1,
           "legendFormat": "{{name}}",
@@ -666,7 +675,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "sum by (name) (container_memory_usage_bytes{instance=~\"$node\",job=~\"$job\",image!=\"\", service=~\"$service\", name=~\"$container\"})",
+          "expr": "sum by (name) (container_memory_usage_bytes{instance=~\"$node\",job=~\"$job\",image!=\"\", service=~\"$service\", name=~\"$container\",host_name=~\"$hostname\"})",
           "hide": false,
           "interval": "",
           "intervalFactor": 1,
@@ -769,7 +778,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "sum by (name) (rate(container_network_receive_bytes_total{instance=~\"$node\",job=~\"$job\",image!=\"\", service=~\"$service\", name=~\"$container\"}[$__rate_interval]))",
+          "expr": "sum by (name) (rate(container_network_receive_bytes_total{instance=~\"$node\",job=~\"$job\",image!=\"\", service=~\"$service\", name=~\"$container\", host_name=~\"$hostname\"}[$__rate_interval]))",
           "interval": "",
           "intervalFactor": 1,
           "legendFormat": "recv {{name}}",
@@ -785,7 +794,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "-(sum by (name) (rate(container_network_transmit_bytes_total{instance=~\"$node\",job=~\"$job\",image!=\"\", service=~\"$service\", name=~\"$container\"}[$__rate_interval])))",
+          "expr": "-(sum by (name) (rate(container_network_transmit_bytes_total{instance=~\"$node\",job=~\"$job\",image!=\"\", service=~\"$service\", name=~\"$container\", host_name=~\"$hostname\"}[$__rate_interval])))",
           "hide": false,
           "interval": "",
           "intervalFactor": 1,
@@ -885,7 +894,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "sum by (name) (rate(container_fs_reads_bytes_total{instance=~\"$node\",job=~\"$job\",image!=\"\", service=~\"$service\", name=~\"$container\"}[$__rate_interval]))",
+          "expr": "sum by (name) (rate(container_fs_reads_bytes_total{instance=~\"$node\",job=~\"$job\",image!=\"\", service=~\"$service\", name=~\"$container\", host_name=~\"$hostname\"}[$__rate_interval]))",
           "interval": "",
           "intervalFactor": 1,
           "legendFormat": "read {{name}}",
@@ -901,7 +910,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "-(sum by (name) (rate(container_fs_writes_bytes_total{instance=~\"$node\",job=~\"$job\",image!=\"\", service=~\"$service\", name=~\"$container\"}[$__rate_interval])))",
+          "expr": "-(sum by (name) (rate(container_fs_writes_bytes_total{instance=~\"$node\",job=~\"$job\",image!=\"\", service=~\"$service\", name=~\"$container\", host_name=~\"$hostname\"}[$__rate_interval])))",
           "hide": false,
           "interval": "",
           "intervalFactor": 1,
@@ -987,7 +996,7 @@
         "description": "",
         "hide": 0,
         "includeAll": true,
-        "label": "Host",
+        "label": "Instance",
         "multi": true,
         "name": "node",
         "options": [],
@@ -1028,11 +1037,35 @@
         "skipUrlSync": false,
         "sort": 1,
         "type": "query"
+      },
+      {
+        "current": {},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${PROMETHEUS_DATASOURCE}"
+        },
+        "definition": "label_values(container_cpu_usage_seconds_total,host_name)",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Host",
+        "multi": false,
+        "name": "hostname",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(container_cpu_usage_seconds_total,host_name)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
       }
     ]
   },
   "time": {
-    "from": "now-24h",
+    "from": "now-5m",
     "to": "now"
   },
   "timepicker": {
@@ -1063,6 +1096,6 @@
   "timezone": "browser",
   "title": "Docker monitoring",
   "uid": "m0arCBf7k",
-  "version": 1,
+  "version": 3,
   "weekStart": ""
 }
