@@ -1,0 +1,4 @@
+# obtained from `terraform output``
+data_collection_rule_id: ""
+azure_monitor_ingestion_host: ""
+user_identity_id: ""

@@ -1,0 +1,246 @@
+---
+- name: Install OpenTelemetry Collector
+  hosts: all
+  become: true
+  vars_files:
+    - ./vars/otel_vars.yml
+  handlers:
+    - name: restart_otelcol
+      service:
+        name: otelcol-contrib
+        state: restarted
+  tags:
+    - otelcol
+
+  tasks:
+    - name: Install dependencies
+      apt:
+        name:
+          - git
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+          - python3-pip
+          - virtualenv
+          - python3-setuptools
+        state: present
+        update_cache: true
+
+    - name: Add Docker GPG apt Key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker Repository
+      apt_repository:
+        repo: deb https://download.docker.com/linux/ubuntu focal stable
+        state: present
+
+    - name: Update apt and install docker-ce
+      apt:
+        name: docker-ce
+        state: latest
+        update_cache: true
+
+    - name: Install Docker Module for Python
+      pip:
+        name: docker   
+ 
+
+    - name: Download opentelemetry collector .deb package
+      get_url:
+        url: https://github.com/open-telemetry/opentelemetry-collector-releases/releases/download/v0.109.0/otelcol-contrib_0.109.0_linux_amd64.deb
+        dest: /tmp/otelcol-contrib_0.109.0_linux_amd64.deb
+    
+    - name: Install Opentelemetry Contrib Collector
+      apt:
+        deb: /tmp/otelcol-contrib_0.109.0_linux_amd64.deb
+
+    - name: Copy Otelcol Config file
+      template:
+        src: ./files/config.yaml.j2
+        dest: /etc/otelcol-contrib/config.yaml
+      notify: restart_otelcol
+
+    - name: Create a data container
+      docker_container:
+        name: aad-auth-proxy
+        image: mcr.microsoft.com/azuremonitor/auth-proxy/prod/aad-auth-proxy/images/aad-auth-proxy:0.1.0-main-04-10-2024-7067ac84
+        state: started
+        ports:
+          - "8081:8081"
+
+        env:
+          AUDIENCE: "https://monitor.azure.com/.default"
+          TARGET_HOST: "{{ azure_monitor_ingestion_host }}" 
+          LISTENING_PORT: "8081"
+          IDENTITY_TYPE: "userAssigned" 
+          AAD_CLIENT_ID: "{{ user_identity_id }}"
+          AAD_TOKEN_REFRESH_INTERVAL_IN_PERCENTAGE: "10"
+          OTEL_SERVICE_NAME: "azuremonitor_ingestion"
+          
+- name: Setup cAdvisor
+  hosts: all
+  become: true
+  tags:
+   - cadvisor
+  tasks:
+    - name: Create cAdvisor Container
+      docker_container:
+        name: cadvisor
+        image: gcr.io/cadvisor/cadvisor:v0.49.1
+        state: started
+        ports:
+          - "8080:8080"
+        privileged: true
+        volumes:
+          - /:/rootfs:ro
+          - /var/run:/var/run:ro
+          - /sys:/sys:ro
+          - /var/lib/docker/:/var/lib/docker:ro
+          - /dev/disk/:/dev/disk:ro
+        devices: 
+          - /dev/kmsg
+
+- name: Setup file sharing service (picoshare)
+  hosts: all
+  become: true
+  tags:
+   - filesharing
+  tasks:
+    - name: Create picoshare Container
+      docker_container:
+        name: picoshare
+        image: mtlynch/picoshare:1.4.4
+        ports:
+          - "4001:4001/tcp"
+        env:
+          PORT: "4001"
+          PS_SHARED_SECRET: "verysecretpassword"
+          
+- name: Setup Blackbox Exporter
+  hosts: all
+  become: true
+  handlers:
+    - name: restart_otelcol
+      service:
+        name: otelcol-contrib
+        state: restarted
+    - name: restart_blackbox_exporter
+      service:
+        name: prometheus-blackbox-exporter
+        state: restarted
+  tags:
+    - blackbox_exporter
+
+  tasks:
+    - name: Install Blackbox Exporter
+      apt:
+        name:
+          - prometheus-blackbox-exporter
+        state: present
+
+    - name: Copy Blackbox exporter Config file
+      copy:
+        src: ./files/blackbox_config.yaml
+        dest: /etc/prometheus/blackbox.yml
+      notify: restart_blackbox_exporter
+
+- name: Setup the Counter Application
+  hosts: all
+  become: true
+  tags:
+    - setup_counter_application
+
+  tasks:
+    - name: Install git
+      apt:
+        name:
+          - git
+        state: present
+        update_cache: yes
+
+    - name: Install the gpg key for nodejs LTS
+      apt_key:
+        url: "https://deb.nodesource.com/gpgkey/nodesource.gpg.key"
+        state: present
+    
+    - name: Install the nodejs LTS repos
+      apt_repository:
+        repo: "deb https://deb.nodesource.com/node_20.x {{ ansible_distribution_release }} main"
+        state: present
+        update_cache: yes
+
+    - name: Install the nodejs
+      apt:
+        name: nodejs
+        state: present
+
+    - name: Add yarn GPG key
+      apt_key:
+        url: https://dl.yarnpkg.com/debian/pubkey.gpg
+        state: present
+
+    - name: Add yarn repo
+      apt_repository:
+        repo: deb https://dl.yarnpkg.com/debian/ stable main
+        state: present
+    
+    - name: install yarn
+      apt:
+        name: yarn
+        state: present
+
+    - name: Clone the repo
+      ansible.builtin.git:
+        repo: https://github.com/curioustushar/react-sample-projects.git
+        dest: "/home/ubuntu/react-sample-projects"
+        version: master
+        force: yes
+
+    - name: Install dependencies
+      yarn:
+        path: "/home/ubuntu/react-sample-projects/counter"
+
+  
+- name: Run the Counter Application
+  hosts: all
+  become: true
+  tags:
+    - run_counter_application
+
+  tasks:
+    - name: Ensure cert dir exists
+      file:
+        path: /home/ubuntu/react-sample-projects/counter/certs
+        state: directory
+
+    - name: Create private key (RSA, 4096 bits)
+      community.crypto.openssl_privatekey:
+        path: /home/ubuntu/react-sample-projects/counter/certs/certificate.key
+
+    
+    - name: Create simple self-signed certificate
+      community.crypto.x509_certificate:
+        path: /home/ubuntu/react-sample-projects/counter/certs/certificate.pem       
+        privatekey_path: /home/ubuntu/react-sample-projects/counter/certs/certificate.key
+        provider: selfsigned
+
+        
+    - name: Update package.json 
+      lineinfile:
+        path: /home/ubuntu/react-sample-projects/counter/package.json
+        regexp: '"start":'
+        line: '    "start": "export HTTPS=true&&SSL_CRT_FILE=../certs/certificate.pem&&SSL_KEY_FILE=../certs/certificate.key react-scripts start",'
+        create: yes    
+
+    - name: Copy Counter Systemd file
+      copy:
+        src: ./files/counter.service
+        dest: /etc/systemd/system/counter.service
+
+    - name: Start Counter 
+      service:
+        name: counter.service
+        state: started
